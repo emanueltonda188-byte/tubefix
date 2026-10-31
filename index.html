@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TubeFix — YouTube Metadata Fixer</title>
+<link rel="stylesheet" href="styles.css" />
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">TF</span>
+        <span class="brand-name">TubeFix</span>
+        <span class="brand-tag">YouTube metadata fixer</span>
+      </div>
+      <div class="topbar-right">
+        <span id="account-label" class="account-label">Not signed in</span>
+        <button id="signout-btn" class="btn btn-quiet hidden">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <p class="intro">Fix a video's title, description, tags and thumbnail — without re-uploading it. Everything runs in your browser. No server, no cost.</p>
+
+    <ol class="steps" id="stepper">
+      <li class="step active" data-step="1"><span class="step-num">1</span><span class="step-label">Connect</span></li>
+      <li class="step" data-step="2"><span class="step-num">2</span><span class="step-label">Pick a video</span></li>
+      <li class="step" data-step="3"><span class="step-num">3</span><span class="step-label">Metadata</span></li>
+      <li class="step" data-step="4"><span class="step-num">4</span><span class="step-label">Thumbnail</span></li>
+    </ol>
+
+    <div id="file-warning" class="notice hidden">
+      Google sign-in does not work from a file opened directly. Serve this folder over HTTP instead, for example:
+      <code>python3 -m http.server 8000</code> — then open <code>http://localhost:8000</code>.
+    </div>
+
+    <!-- STEP 1: CONNECT -->
+    <section class="card" id="card-1">
+      <h2>1. Connect your YouTube account</h2>
+      <p class="muted">Sign in on Google's own screen. TubeFix never sees your password, and you can revoke access anytime at <span class="mono">myaccount.google.com/permissions</span>.</p>
+
+      <label class="field-label" for="client-id">Google OAuth client ID (needed once)</label>
+      <div class="row">
+        <input id="client-id" type="text" placeholder="123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com" autocomplete="off" />
+        <button id="save-client-id" class="btn btn-dark">Save</button>
+      </div>
+      <details class="setup">
+        <summary>How to get a client ID (about 10 minutes, free)</summary>
+        <ol>
+          <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> and create a project (any name, e.g. TubeFix).</li>
+          <li>Left menu → <strong>APIs &amp; Services → Library</strong> → search <strong>YouTube Data API v3</strong> → Enable.</li>
+          <li><strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong> → application type <strong>Web application</strong>.</li>
+          <li>Under <strong>Authorized JavaScript origins</strong>, add the address you serve this app from, e.g. <code>http://localhost:8000</code> (add your live site later the same way).</li>
+          <li>Copy the client ID it shows and paste it above. For personal use only, the app can stay in Testing mode — no Google verification needed.</li>
+        </ol>
+      </details>
+
+      <div class="row actions">
+        <button id="signin-btn" class="btn btn-primary" disabled>Sign in with Google</button>
+        <span id="connect-status" class="status"></span>
+      </div>
+    </section>
+
+    <!-- STEP 2: PICK A VIDEO -->
+    <section class="card" id="card-2">
+      <h2>2. Pick a video</h2>
+      <div class="row actions">
+        <button id="load-videos-btn" class="btn btn-dark" disabled>Load my videos</button>
+        <span id="videos-status" class="status"></span>
+      </div>
+      <div id="video-list" class="video-list"></div>
+    </section>
+
+    <!-- STEP 3: METADATA -->
+    <section class="card" id="card-3">
+      <h2>3. Metadata</h2>
+      <p class="muted" id="selected-video-label">No video selected yet.</p>
+
+      <label class="field-label" for="topic">Topic (short works best)</label>
+      <input id="topic" type="text" placeholder="e.g. how scams work" />
+      <div class="row actions">
+        <button id="generate-btn" class="btn btn-dark" disabled>Generate titles, description &amp; tags</button>
+      </div>
+
+      <div id="titles-block" class="hidden">
+        <label class="field-label">Title — click one to use it</label>
+        <div id="title-options" class="title-options"></div>
+      </div>
+
+      <label class="field-label" for="title">Title</label>
+      <input id="title" type="text" />
+
+      <label class="field-label" for="description">Description</label>
+      <textarea id="description" rows="8"></textarea>
+
+      <label class="field-label" for="tags">Tags (comma separated)</label>
+      <textarea id="tags" rows="3"></textarea>
+      <p class="hint"><span id="tags-count">0</span> / 500 characters total for tags.</p>
+
+      <div class="row actions">
+        <button id="apply-btn" class="btn btn-primary" disabled>Apply to YouTube</button>
+        <span id="apply-status" class="status"></span>
+      </div>
+      <p id="apply-links" class="hint hidden"></p>
+    </section>
+
+    <!-- STEP 4: THUMBNAIL -->
+    <section class="card" id="card-4">
+      <h2>4. Thumbnail</h2>
+      <p class="muted">Custom thumbnails need a phone-verified YouTube account. Recommended size: 1280 × 720.</p>
+      <label class="field-label" for="thumb-file">Thumbnail image</label>
+      <input id="thumb-file" type="file" accept="image/png, image/jpeg, image/webp" />
+      <div id="thumb-preview-wrap" class="thumb-preview-wrap hidden">
+        <img id="thumb-preview" alt="Thumbnail preview" />
+        <p class="hint" id="thumb-info"></p>
+      </div>
+      <div class="row actions">
+        <button id="thumb-btn" class="btn btn-primary" disabled>Set thumbnail</button>
+        <span id="thumb-status" class="status"></span>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <p>TubeFix runs entirely in your browser. Your videos are only changed when you click Apply or Set thumbnail. Daily YouTube API allowance is shared per app project (10,000 units by default) — a metadata fix costs 50, a thumbnail set costs 50.</p>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
